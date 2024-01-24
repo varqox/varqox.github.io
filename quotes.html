@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		* {
+			box-sizing: border-box;
+		}
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+			color: #24292e;
+			line-height: 1.5;
+			word-wrap: break-word;
+			max-width: 1012px;
+			margin-right: auto;
+			margin-left: auto;
+			padding-left: 16px;
+			padding-right: 16px;
+		}
+		button + button {
+			margin-left: 0.25rem;
+		}
+	</style>
+	<link rel="icon" href="data:,">
+</head>
+<body></body>
+<script>
+function elem_with_text(tag, text) {
+	const elem = document.createElement(tag);
+	elem.innerText = text;
+	return elem;
+}
+function elem_of(tag, ...args) {
+	const elem = document.createElement(tag);
+	elem.append(...args);
+	return elem;
+}
+
+async function hash_text_to_int(text) {
+	let hash = await crypto.subtle.digest('SHA-512', new TextEncoder().encode(text));
+	let view = new DataView(hash);
+	let res = 0;
+	for (let i = 0; i < view.byteLength; i += 4) {
+		res ^= view.getUint32(i);
+	}
+	return res + 0x80000000; // for some reason res is a signed 32bit integer
+}
+
+(async () => {
+	const request = await fetch("quotes.json")
+	const quotes = await request.json()
+	const date = new Date();
+	const curr_day_str = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+	const today_quote = quotes[await hash_text_to_int(curr_day_str) % quotes.length];
+
+	const buttons_div = document.body.appendChild(document.createElement('div'));
+
+	const quote_div = document.body.appendChild(document.createElement('div'));
+	const quote_elem = quote_div.appendChild(document.createElement('p'));
+	const quote_source_elem = quote_div.appendChild(document.createElement('p'));
+	quote_source_elem.style.textAlign = 'right';
+
+	const show_quote = (quote) => {
+		quote_elem.textContent = quote.quote;
+		quote_source_elem.textContent = '';
+		quote_source_elem.append('~ ', quote.book.authors.join(', '), ', ', elem_with_text('i', quote.book.title), ', ', quote.book.chapter, ' p. ', quote.book.page);
+	};
+
+	show_quote(today_quote);
+	const today_quote_button = buttons_div.appendChild(elem_with_text('button', "Today's quote"));
+	today_quote_button.addEventListener('click', () => show_quote(today_quote));
+
+	const random_quote_button = buttons_div.appendChild(elem_with_text('button', 'Random quote'));
+	random_quote_button.addEventListener('click', () => {
+		show_quote(quotes[Math.floor(Math.random() * quotes.length)]);
+	});
+})()
+</script>
+</html>
